@@ -332,14 +332,14 @@ module Isuconp
 
         params['file'][:tempfile].rewind
         query = 'INSERT INTO `posts` (`user_id`, `mime`, `body`) VALUES (?,?,?)'
-        db.query("BEGIN")
+        db.query("LOCK TABLES posts WRITE")
         db.prepare(query).execute(
           me[:id],
           mime,
           params["body"],
         )
         pid = db.last_id
-        db.query("COMMIT")
+        db.query("UNLOCK TABLES")
 
         img_path = File.expand_path("../public" + image_url(pid, mime))
         File.write(img_path, params["file"][:tempfile].read)
