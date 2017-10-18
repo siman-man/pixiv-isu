@@ -211,7 +211,7 @@ module Isuconp
     get '/' do
       me = get_session_user()
 
-      results = db.query('SELECT `id`, `user_id`, `body`, `created_at`, `mime` FROM `posts` ORDER BY `created_at` DESC LIMIT 20')
+      results = db.query('SELECT `posts`.`id`, `user_id`, `body`, `posts`.`created_at`, `mime` FROM `posts` INNER JOIN users on `posts`.`user_id` = `users`.id where del_flg = 1 ORDER BY `posts`.`created_at` DESC LIMIT 20')
       posts = make_posts(results)
 
       erb :index, layout: :layout, locals: { posts: posts, me: me }
@@ -255,7 +255,7 @@ module Isuconp
 
     get '/posts' do
       max_created_at = params['max_created_at']
-      results = db.prepare('SELECT `id`, `user_id`, `body`, `mime`, `created_at` FROM `posts` WHERE `created_at` <= ? ORDER BY `created_at` DESC LIMIT 20').execute(
+      results = db.prepare('SELECT `posts`.`id`, `user_id`, `body`, `mime`, `posts`.`created_at` FROM `posts` FROM `posts` INNER JOIN users ON `posts`.`user_id` = `users`.id WHERE `posts`.`created_at` <= ? AND del_flg = 1 ORDER BY `created_at` DESC LIMIT 20').execute(
         max_created_at.nil? ? nil : Time.iso8601(max_created_at).localtime
       )
       posts = make_posts(results)
@@ -264,7 +264,7 @@ module Isuconp
     end
 
     get '/posts/:id' do
-      results = db.prepare('SELECT * FROM `posts` WHERE `id` = ? LIMIT 20').execute(
+      results = db.prepare('SELECT * FROM `posts` WHERE `id` = ?').execute(
         params[:id]
       )
       posts = make_posts(results, all_comments: true)
