@@ -29,6 +29,8 @@ module Isuconp
         sql.each do |s|
           db.prepare(s).execute
         end
+
+        redis.flushall
       end
 
       def image_initialize
@@ -39,6 +41,17 @@ module Isuconp
             FileUtils.remove_file(path)
           end
         end
+      end
+
+      def data_initialize
+        db.prepare('select post_id, count(*) as comment_count from comments group by post_id;').execute.each do |result|
+          key = comment_counter_key(result[:post_id])
+          redis.set(key, result[:comment_count])
+        end
+      end
+
+      def comment_counter_key(id)
+        "post#{id}:comment:count"
       end
 
       def try_login(account_name, password)
@@ -87,9 +100,8 @@ module Isuconp
       def make_posts(results, all_comments: false)
         posts = []
         results.to_a.each do |post|
-          post[:comment_count] = db.prepare('SELECT COUNT(*) AS `count` FROM `comments` WHERE `post_id` = ?').execute(
-            post[:id]
-          ).first[:count]
+          key = comment_counter_key(post[:id])
+          post[:comment_count] = redis.get(key).to_i
 
           query = 'SELECT * FROM `comments` WHERE `post_id` = ? ORDER BY `created_at` DESC'
           unless all_comments
@@ -133,6 +145,8 @@ module Isuconp
     get '/initialize' do
       db_initialize
       image_initialize
+
+      data_initialize
       return 200
     end
 
@@ -349,6 +363,10 @@ module Isuconp
         me[:id],
         params['comment']
       )
+
+      key = comment_counter_key(post_id)
+      comment_count = redis.get(key).to_i
+      redis.set(key, comment_count + 1)
 
       redirect "/posts/#{post_id}", 302
     end

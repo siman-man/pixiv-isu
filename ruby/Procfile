@@ -1,1 +1,2 @@
 unicorn: DEBUG=1 bundle exec unicorn -c unicorn_config.rb
+redis: redis-server

@@ -1,4 +1,5 @@
 require 'mysql2'
+require 'redis'
 
 def config
   @config ||= {
@@ -26,4 +27,8 @@ def db
   client.query_options.merge!(symbolize_keys: true, database_timezone: :local, application_timezone: :local)
   Thread.current[:isuconp_db] = client
   client
+end
+
+def redis
+  @redis ||= Redis.new(host: "localhost", port: 6379)
 end
