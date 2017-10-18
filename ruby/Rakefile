@@ -1,0 +1,8 @@
+task :configure_routes do
+  require "sinatra-rake-routes"
+  # Tell SinatraRakeRoutes what your Sinatra::Base application class is called:
+  require_relative 'app'
+  SinatraRakeRoutes.set_app_class(Isuconp::App)
+end
+
+require "sinatra-rake-routes/tasks"
