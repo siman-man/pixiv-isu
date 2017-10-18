@@ -100,7 +100,9 @@ module Isuconp
       def make_posts(results, all_comments: false)
         posts = []
         post_ids = results.map { |post| post[:id] }
-        comment_store = db.prepare("SELECT * FROM comments WHERE post_id in (#{post_ids.join(',')})").execute.to_a
+        comment_store = db.prepare("SELECT post_id, user_id, comment FROM comments WHERE post_id in (#{post_ids.join(',')})").execute.to_a
+        user_ids = (results.map { |post| post[:user_id] } + comment_store.map { |c| c[:user_id] }).uniq
+        user_store = db.prepare("SELECT * FROM users WHERE id in (#{user_ids.join(',')})").execute.to_a
 
         results.to_a.each do |post|
           key = comment_counter_key(post[:id])
@@ -113,15 +115,10 @@ module Isuconp
           end
 
           comments.each do |comment|
-            comment[:user] = db.prepare('SELECT * FROM `users` WHERE `id` = ?').execute(
-              comment[:user_id]
-            ).first
+            comment[:user] = user_store.find { |u| u[:id] == comment[:user_id] }
           end
           post[:comments] = comments.reverse
-
-          post[:user] = db.prepare('SELECT * FROM `users` WHERE `id` = ?').execute(
-            post[:user_id]
-          ).first
+          post[:user] = user_store.find { |u| u[:id] == post[:user_id] }
 
           posts.push(post) if post[:user][:del_flg] == 0
           break if posts.length >= POSTS_PER_PAGE
