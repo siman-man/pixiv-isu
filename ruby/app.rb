@@ -45,13 +45,22 @@ module Isuconp
 
       def data_initialize
         db.prepare('select post_id, count(*) as comment_count from comments group by post_id;').execute.each do |result|
-          key = comment_counter_key(result[:post_id])
+          key = post_comment_counter_key(result[:post_id])
+          redis.set(key, result[:comment_count])
+        end
+
+        db.prepare('select user_id, count(*) as comment_count from comments group by user_id').execute.each do |result|
+          key = user_comment_counter_key(result[:user_id])
           redis.set(key, result[:comment_count])
         end
       end
 
-      def comment_counter_key(id)
+      def post_comment_counter_key(id)
         "post#{id}:comment:count"
+      end
+
+      def user_comment_counter_key(id)
+        "user#{id}:comment:count"
       end
 
       def try_login(account_name, password)
@@ -105,7 +114,7 @@ module Isuconp
         user_store = db.prepare("SELECT * FROM users WHERE id in (#{user_ids.join(',')})").execute.to_a
 
         results.to_a.each do |post|
-          key = comment_counter_key(post[:id])
+          key = post_comment_counter_key(post[:id])
           post[:comment_count] = redis.get(key).to_i
 
           if all_comments
@@ -244,9 +253,8 @@ module Isuconp
       )
       posts = make_posts(results)
 
-      comment_count = db.prepare('SELECT COUNT(*) AS count FROM `comments` WHERE `user_id` = ?').execute(
-        user[:id]
-      ).first[:count]
+      key = user_comment_counter_key(user[:id])
+      comment_count = redis.get(key).to_i
 
       post_ids = db.prepare('SELECT `id` FROM `posts` WHERE `user_id` = ?').execute(
         user[:id]
@@ -363,7 +371,11 @@ module Isuconp
         params['comment']
       )
 
-      key = comment_counter_key(post_id)
+      key = post_comment_counter_key(post_id)
+      comment_count = redis.get(key).to_i
+      redis.set(key, comment_count + 1)
+
+      key = user_comment_counter_key(me[:id])
       comment_count = redis.get(key).to_i
       redis.set(key, comment_count + 1)
 
