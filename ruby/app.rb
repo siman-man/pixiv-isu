@@ -106,10 +106,6 @@ module Isuconp
           key = comment_counter_key(post[:id])
           post[:comment_count] = redis.get(key).to_i
 
-          query = 'SELECT * FROM `comments` WHERE `post_id` = ? ORDER BY `created_at` DESC'
-          unless all_comments
-            query += ' LIMIT 3'
-          end
           if all_comments
             comments = comment_store.select { |comment| comment[:post_id] == post[:id] }
           else
