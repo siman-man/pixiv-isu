@@ -12,5 +12,6 @@ gem "sinatra-rake-routes"
 gem "rack-lineprof"
 gem "rack-mini-profiler"
 gem "redis"
+gem "erubis"
 gem "activerecord", require: false
 gem "pry", require: false
