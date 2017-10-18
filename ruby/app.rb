@@ -2,12 +2,16 @@ require 'fileutils'
 require 'sinatra/base'
 require 'rack-flash'
 require 'shellwords'
+require 'rack-mini-profiler'
+require 'rack-lineprof'
 require_relative 'db'
 
 module Isuconp
   class App < Sinatra::Base
     use Rack::Session::Memcache, autofix_keys: true, secret: ENV['ISUCONP_SESSION_SECRET'] || 'sendagaya'
     use Rack::Flash
+    use Rack::Lineprof if ENV['DEBUG']
+    use Rack::MiniProfiler if ENV['DEBUG']
     set :public_folder, File.expand_path('../../public', __FILE__)
 
     UPLOAD_LIMIT = 10 * 1024 * 1024 # 10mb
