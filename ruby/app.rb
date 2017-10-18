@@ -309,23 +309,6 @@ module Isuconp
       end
     end
 
-    get '/image/:id.:ext' do
-      if params[:id].to_i == 0
-        return ""
-      end
-
-      post = db.prepare('SELECT * FROM `posts` WHERE `id` = ?').execute(params[:id].to_i).first
-
-      if (params[:ext] == "jpg" && post[:mime] == "image/jpeg") ||
-          (params[:ext] == "png" && post[:mime] == "image/png") ||
-          (params[:ext] == "gif" && post[:mime] == "image/gif")
-        headers['Content-Type'] = post[:mime]
-        return post[:imgdata]
-      end
-
-      return 404
-    end
-
     post '/comment' do
       me = get_session_user()
 
