@@ -243,7 +243,7 @@ module Isuconp
         id: db.last_id
       }
 
-      db.prepare('select * from users where = ?').execute(session[:user][:id]).each do |user|
+      db.prepare('select * from users where id = ?').execute(session[:user][:id]).each do |user|
         key = user_key(user[:id])
         redis.set(key, user.to_h.to_json)
       end
