@@ -99,13 +99,7 @@ module Isuconp
       end
 
       def get_session_user()
-        if session[:user]
-          db.prepare('SELECT * FROM `users` WHERE `id` = ?').execute(
-            session[:user][:id]
-          ).first
-        else
-          nil
-        end
+        session[:user]
       end
 
       def make_posts(results, all_comments: false)
@@ -173,9 +167,7 @@ module Isuconp
 
       user = try_login(params['account_name'], params['password'])
       if user
-        session[:user] = {
-          id: user[:id]
-        }
+        session[:user] = user
         session[:csrf_token] = SecureRandom.hex(16)
         redirect '/', 302
       else
@@ -219,9 +211,7 @@ module Isuconp
         calculate_passhash(account_name, password)
       )
 
-      session[:user] = {
-        id: db.last_id
-      }
+      session[:user] = db.prepare('SELECT * FROM users WHERE id = ?').execute(db.last_id).first
       session[:csrf_token] = SecureRandom.hex(16)
       redirect '/', 302
     end
