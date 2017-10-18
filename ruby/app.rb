@@ -99,6 +99,9 @@ module Isuconp
 
       def make_posts(results, all_comments: false)
         posts = []
+        post_ids = results.map { |post| post[:id] }
+        comment_store = db.prepare("SELECT * FROM comments WHERE post_id in (#{post_ids.join(',')})").execute.to_a
+
         results.to_a.each do |post|
           key = comment_counter_key(post[:id])
           post[:comment_count] = redis.get(key).to_i
@@ -107,9 +110,12 @@ module Isuconp
           unless all_comments
             query += ' LIMIT 3'
           end
-          comments = db.prepare(query).execute(
-            post[:id]
-          ).to_a
+          if all_comments
+            comments = comment_store.select { |comment| comment[:post_id] == post[:id] }
+          else
+            comments = comment_store.select { |comment| comment[:post_id] == post[:id] }.take(3)
+          end
+
           comments.each do |comment|
             comment[:user] = db.prepare('SELECT * FROM `users` WHERE `id` = ?').execute(
               comment[:user_id]
