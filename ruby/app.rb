@@ -1,3 +1,4 @@
+require 'fileutils'
 require 'sinatra/base'
 require 'rack-flash'
 require 'shellwords'
@@ -23,6 +24,16 @@ module Isuconp
         sql << 'UPDATE users SET del_flg = 1 WHERE id % 50 = 0'
         sql.each do |s|
           db.prepare(s).execute
+        end
+      end
+
+      def image_initialize
+        Dir.glob(File.expand_path('../public/image/*.*', __dir__)).each do |path|
+          id = File.basename(path).split('.').first.to_i
+
+          if id > 10000
+            FileUtils.remove_file(path)
+          end
         end
       end
 
@@ -117,6 +128,7 @@ module Isuconp
 
     get '/initialize' do
       db_initialize
+      image_initialize
       return 200
     end
 
