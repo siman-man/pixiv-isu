@@ -4,6 +4,7 @@ require 'rack-flash'
 require 'shellwords'
 require 'rack-mini-profiler'
 require 'rack-lineprof'
+require 'json'
 require 'openssl'
 require_relative 'db'
 
@@ -54,6 +55,11 @@ module Isuconp
           key = user_comment_counter_key(result[:user_id])
           redis.set(key, result[:comment_count])
         end
+
+        db.prepare('select * from users').execute.each do |user|
+          key = user_key(user[:id])
+          redis.set(key, user.to_h.to_json)
+        end
       end
 
       def post_comment_counter_key(id)
@@ -62,6 +68,10 @@ module Isuconp
 
       def user_comment_counter_key(id)
         "user#{id}:comment:count"
+      end
+
+      def user_key(id)
+        "user:#{id}"
       end
 
       def try_login(account_name, password)
@@ -112,7 +122,17 @@ module Isuconp
         post_ids = results.map { |post| post[:id] }
         comment_store = db.prepare("SELECT post_id, user_id, comment FROM comments WHERE post_id in (#{post_ids.join(',')})").execute.to_a
         user_ids = (results.map { |post| post[:user_id] } + comment_store.map { |c| c[:user_id] }).uniq
-        user_store = db.prepare("SELECT * FROM users WHERE id in (#{user_ids.join(',')})").execute.to_a
+        # user_store = db.prepare("SELECT * FROM users WHERE id in (#{user_ids.join(',')})").execute.to_a
+        user_store = user_ids.map do |uid|
+          key = user_key(uid)
+          user = JSON.parse(redis.get(key))
+          user[:id] = user["id"].to_i
+          user[:account_name] = user["account_name"]
+          user[:authority] = user["authority"].to_i
+          user[:del_flg] = user["del_flg"].to_i
+          user
+        end
+
 
         results.to_a.each do |post|
           key = post_comment_counter_key(post[:id])
@@ -222,6 +242,12 @@ module Isuconp
       session[:user] = {
         id: db.last_id
       }
+
+      db.prepare('select * from users where = ?').execute(session[:user][:id]).each do |user|
+        key = user_key(user[:id])
+        redis.set(key, user.to_h.to_json)
+      end
+
       session[:csrf_token] = SecureRandom.hex(16)
       redirect '/', 302
     end
