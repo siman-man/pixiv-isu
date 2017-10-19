@@ -295,9 +295,8 @@ module Isuconp
       results = db.prepare('SELECT * FROM `posts` WHERE `id` = ? LIMIT 20').execute(
         params[:id]
       )
+      return 404 if results.count == 0
       posts = make_posts(results, all_comments: true)
-
-      return 404 if posts.length == 0
 
       post = posts[0]
 
