@@ -66,7 +66,7 @@ module Isuconp
       end
 
       def try_login(account_name, password)
-        user = db.prepare('SELECT * FROM users WHERE account_name = ? AND del_flg = 0').execute(account_name).first
+        user = db.prepare('SELECT account_name, passhash FROM users WHERE account_name = ? AND del_flg = 0').execute(account_name).first
 
         if user && calculate_passhash(user[:account_name], password) == user[:passhash]
           return user
@@ -100,7 +100,7 @@ module Isuconp
 
       def get_session_user()
         if session[:user]
-          db.prepare('SELECT * FROM `users` WHERE `id` = ?').execute(
+          db.prepare('SELECT id, account_name, authority FROM `users` WHERE `id` = ?').execute(
             session[:user][:id]
           ).first
         else
@@ -242,7 +242,7 @@ module Isuconp
     end
 
     get '/@:account_name' do
-      user = db.prepare('SELECT * FROM `users` WHERE `account_name` = ? AND `del_flg` = 0').execute(
+      user = db.prepare('SELECT id FROM `users` WHERE `account_name` = ? AND `del_flg` = 0').execute(
         params[:account_name]
       ).first
 
@@ -287,7 +287,7 @@ module Isuconp
     end
 
     get '/posts/:id' do
-      results = db.prepare('SELECT * FROM `posts` WHERE `id` = ? LIMIT 20').execute(
+      results = db.prepare('SELECT id, user_id, body, created_at FROM `posts` WHERE `id` = ? LIMIT 20').execute(
         params[:id]
       )
       posts = make_posts(results, all_comments: true)
@@ -398,7 +398,7 @@ module Isuconp
         return 403
       end
 
-      users = db.query('SELECT * FROM `users` WHERE `authority` = 0 AND `del_flg` = 0 ORDER BY `created_at` DESC')
+      users = db.query('SELECT id, account_name FROM `users` WHERE `authority` = 0 AND `del_flg` = 0 ORDER BY `created_at` DESC')
 
       erb :banned, layout: :layout, locals: { users: users, me: me }
     end
