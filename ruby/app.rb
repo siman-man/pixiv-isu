@@ -374,12 +374,10 @@ module Isuconp
       )
 
       key = post_comment_counter_key(post_id)
-      comment_count = redis.get(key).to_i
-      redis.set(key, comment_count + 1)
+      redis.incr(key)
 
       key = user_comment_counter_key(me[:id])
-      comment_count = redis.get(key).to_i
-      redis.set(key, comment_count + 1)
+      redis.incr(key)
 
       redirect "/posts/#{post_id}", 302
     end
