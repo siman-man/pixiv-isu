@@ -265,10 +265,7 @@ module Isuconp
 
       commented_count = 0
       if post_count > 0
-        placeholder = (['?'] * post_ids.length).join(",")
-        commented_count = db.prepare("SELECT COUNT(*) AS count FROM `comments` WHERE `post_id` IN (#{placeholder})").execute(
-          *post_ids
-        ).first[:count]
+        commented_count = redis.mget(*post_ids.map {|pid| post_comment_counter_key(pid)}).map(&:to_i).inject(:+)
       end
 
       me = get_session_user()
