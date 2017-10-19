@@ -55,6 +55,11 @@ module Isuconp
           key = user_comment_counter_key(result[:user_id])
           redis.set(key, result[:comment_count])
         end
+
+        db.prepare('select id, user_id from posts').execute.each do |post|
+          key = user_post_ids_key(post[:user_id])
+          redis.rpush(key, post[:id])
+        end
       end
 
       def post_comment_counter_key(id)
@@ -63,6 +68,10 @@ module Isuconp
 
       def user_comment_counter_key(id)
         "user#{id}:comment:count"
+      end
+
+      def user_post_ids_key(id)
+        "users#{id}:posts:ids"
       end
 
       def try_login(account_name, password)
@@ -258,9 +267,8 @@ module Isuconp
       key = user_comment_counter_key(user[:id])
       comment_count = redis.get(key).to_i
 
-      post_ids = db.prepare('SELECT `id` FROM `posts` WHERE `user_id` = ?').execute(
-        user[:id]
-      ).map{|post| post[:id]}
+      key = user_post_ids_key(user[:id])
+      post_ids = redis.lrange(key, 0, -1)
       post_count = post_ids.length
 
       commented_count = 0
