@@ -130,6 +130,7 @@ module Isuconp
           end
           post[:comments] = comments.reverse
           post[:user] = user_store.find { |u| u[:id] == post[:user_id] }
+          post[:user][:escaped_account_name] = escape_html(CGI.escape(post[:user][:account_name]))
 
           posts.push(post)
         end
