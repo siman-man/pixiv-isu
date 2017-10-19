@@ -56,14 +56,20 @@ module Isuconp
           redis.set(key, result[:comment_count])
         end
 
-        db.prepare('select id, user_id from posts').execute.each do |post|
+        db.prepare('select id, mime, user_id from posts').execute.each do |post|
           key = user_post_ids_key(post[:user_id])
           redis.rpush(key, post[:id])
+          key = post_image_url_key(post[:id])
+          redis.set(key, image_url(post[:id], post[:mime]))
         end
       end
 
       def post_comment_counter_key(id)
         "post#{id}:comment:count"
+      end
+
+      def post_image_url_key(id)
+        "post#{id}:image_url"
       end
 
       def user_comment_counter_key(id)
@@ -124,6 +130,7 @@ module Isuconp
         user_ids = (results.map { |post| post[:user_id] } + comment_store.map { |c| c[:user_id] }).uniq
         user_store = db.prepare("SELECT id, account_name, del_flg FROM users WHERE id IN (#{user_ids.join(',')})").execute.to_a
         comment_counts = redis.mget(*post_ids.map {|pid| post_comment_counter_key(pid)}).map(&:to_i)
+        post_image_urls = redis.mget(*post_ids.map {|pid| post_image_url_key(pid)})
 
         results.to_a.each do |post|
           post[:comment_count] = comment_counts.shift
@@ -140,6 +147,8 @@ module Isuconp
           post[:comments] = comments.reverse
           post[:user] = user_store.find { |u| u[:id] == post[:user_id] }
           post[:user][:escaped_account_name] = escape_html(CGI.escape(post[:user][:account_name]))
+
+          post[:image_url] = post_image_urls.shift
 
           posts.push(post)
         end
@@ -244,7 +253,7 @@ module Isuconp
     get '/' do
       me = get_session_user()
 
-      results = db.query('SELECT `posts`.`id`, `user_id`, `body`, `posts`.`created_at`, `mime` FROM `posts` INNER JOIN users on `posts`.`user_id` = `users`.id where del_flg = 0 ORDER BY `posts`.`created_at` DESC LIMIT 20')
+      results = db.query('SELECT `posts`.`id`, `user_id`, `body`, `posts`.`created_at` FROM `posts` INNER JOIN users on `posts`.`user_id` = `users`.id where del_flg = 0 ORDER BY `posts`.`created_at` DESC LIMIT 20')
       posts = make_posts(results)
 
       erb :index, layout: :layout, locals: { posts: posts, me: me }
@@ -259,7 +268,7 @@ module Isuconp
         return 404
       end
 
-      results = db.prepare('SELECT `id`, `user_id`, `body`, `mime`, `created_at` FROM `posts` WHERE `user_id` = ? ORDER BY `created_at` DESC LIMIT 20').execute(
+      results = db.prepare('SELECT `id`, `user_id`, `body`, `created_at` FROM `posts` WHERE `user_id` = ? ORDER BY `created_at` DESC LIMIT 20').execute(
         user[:id]
       )
       posts = make_posts(results)
@@ -283,7 +292,7 @@ module Isuconp
 
     get '/posts' do
       max_created_at = params['max_created_at']
-      results = db.prepare('SELECT `posts`.`id`, `user_id`, `body`, `mime`, `posts`.`created_at` FROM `posts` INNER JOIN users ON `posts`.`user_id` = `users`.id WHERE `posts`.`created_at` <= ? AND del_flg = 0 ORDER BY `created_at` DESC LIMIT 20').execute(
+      results = db.prepare('SELECT `posts`.`id`, `user_id`, `body`, `posts`.`created_at` FROM `posts` INNER JOIN users ON `posts`.`user_id` = `users`.id WHERE `posts`.`created_at` <= ? AND del_flg = 0 ORDER BY `created_at` DESC LIMIT 20').execute(
         max_created_at.nil? ? nil : Time.iso8601(max_created_at).localtime
       )
       posts = make_posts(results)
@@ -337,16 +346,17 @@ module Isuconp
         end
 
         params['file'][:tempfile].rewind
-        query = 'INSERT INTO `posts` (`user_id`, `mime`, `body`) VALUES (?,?,?)'
+        query = 'INSERT INTO `posts` (`user_id`, `body`) VALUES (?,?)'
         db.query("LOCK TABLES posts WRITE")
         db.prepare(query).execute(
           me[:id],
-          mime,
           params["body"],
         )
         pid = db.last_id
+        key = post_image_url_key(pid)
         db.query("UNLOCK TABLES")
 
+        redis.set(key, image_url(pid, mime))
         img_path = File.expand_path("../public" + image_url(pid, mime))
         File.write(img_path, params["file"][:tempfile].read)
 
