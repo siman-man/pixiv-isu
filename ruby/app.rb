@@ -242,7 +242,7 @@ module Isuconp
     end
 
     get '/@:account_name' do
-      user = db.prepare('SELECT id FROM `users` WHERE `account_name` = ? AND `del_flg` = 0').execute(
+      user = db.prepare('SELECT id, account_name FROM `users` WHERE `account_name` = ? AND `del_flg` = 0').execute(
         params[:account_name]
       ).first
 
