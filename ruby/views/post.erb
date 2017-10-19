@@ -20,7 +20,7 @@
     <% post[:comments].each do |comment| %>
     <div class="isu-comment">
       <a href="/@<%= post[:user][:escaped_account_name] %>" class="isu-comment-account-name"><%= post[:user][:escaped_account_name] %></a>
-      <span class="isu-comment-text"><%= escape_html(comment[:comment]) %></span>
+      <span class="isu-comment-text"><%= comment[:escaped_comment] %></span>
     </div>
     <% end %>
     <div class="isu-comment-form">

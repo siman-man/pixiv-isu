@@ -368,11 +368,12 @@ module Isuconp
       end
       post_id = params['post_id']
 
-      query = 'INSERT INTO `comments` (`post_id`, `user_id`, `comment`) VALUES (?,?,?)'
+      query = 'INSERT INTO `comments` (`post_id`, `user_id`, `comment`, `escaped_comment`) VALUES (?,?,?,?)'
       db.prepare(query).execute(
         post_id,
         me[:id],
-        params['comment']
+        params['comment'],
+        CGI.escape_html(params['comment'])
       )
 
       key = post_comment_counter_key(post_id)
