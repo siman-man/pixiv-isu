@@ -114,10 +114,10 @@ module Isuconp
         comment_store = db.prepare("SELECT post_id, user_id, comment FROM comments WHERE post_id in (#{post_ids.join(',')})").execute.to_a
         user_ids = (results.map { |post| post[:user_id] } + comment_store.map { |c| c[:user_id] }).uniq
         user_store = db.prepare("SELECT id, account_name, del_flg FROM users WHERE id IN (#{user_ids.join(',')})").execute.to_a
+        comment_counts = redis.mget(*post_ids.map {|pid| post_comment_counter_key(pid)}).map(&:to_i)
 
         results.to_a.each do |post|
-          key = post_comment_counter_key(post[:id])
-          post[:comment_count] = redis.get(key).to_i
+          post[:comment_count] = comment_counts.shift
 
           if all_comments
             comments = comment_store.select { |comment| comment[:post_id] == post[:id] }
