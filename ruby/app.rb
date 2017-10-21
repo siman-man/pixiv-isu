@@ -84,7 +84,7 @@ module Isuconp
       end
 
       def try_login(account_name, password)
-        user = user_list.find { |_id, u| p u; u[:del_flg] == 0 && u[:account_name] == account_name }.last
+        user = user_list.find { |_id, u| p u; u[:del_flg] == 0 && u[:account_name] == account_name }&.last
 
         if user && calculate_passhash(user[:account_name], password) == user[:passhash]
           return user
