@@ -84,7 +84,7 @@ module Isuconp
       end
 
       def try_login(account_name, password)
-        user = db.prepare('SELECT id, account_name, passhash FROM users WHERE account_name = ? AND del_flg = 0').execute(account_name).first
+        user = user_list.find { |u| u[:del_flg] == 0 && u[:account_name] == account_name }
 
         if user && calculate_passhash(user[:account_name], password) == user[:passhash]
           return user
@@ -118,9 +118,7 @@ module Isuconp
 
       def get_session_user()
         if session[:user]
-          db.prepare('SELECT id, account_name, authority FROM `users` WHERE `id` = ?').execute(
-            session[:user][:id]
-          ).first
+          user_list[session[:user][:id]]
         else
           nil
         end
