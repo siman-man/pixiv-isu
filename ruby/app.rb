@@ -127,16 +127,19 @@ module Isuconp
       def make_posts(results, all_comments: false)
         posts = []
         post_ids = results.map { |post| post[:id] }
-        comment_store = db.prepare("SELECT post_id, user_id, comment FROM comments WHERE post_id in (#{post_ids.join(',')})").execute.to_a
+        comment_store = Hash.new { |h, k| [] }
+        db.prepare("SELECT post_id, user_id, comment FROM comments WHERE post_id in (#{post_ids.join(',')})").execute.each do |comment|
+          comment_store[comment[:post_id]] << comment
+        end
         comment_counts = redis.mget(*post_ids.map {|pid| post_comment_counter_key(pid)}).map(&:to_i)
 
         results.to_a.each do |post|
           post[:comment_count] = comment_counts.shift
 
           if all_comments
-            comments = comment_store.select { |comment| comment[:post_id] == post[:id] }
+            comments = comment_store[post[:id]]
           else
-            comments = comment_store.select { |comment| comment[:post_id] == post[:id] }.take(3)
+            comments = comment_store[post[:id]].take(3)
           end
 
           comments.each do |comment|
