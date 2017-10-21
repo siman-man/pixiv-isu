@@ -244,7 +244,7 @@ module Isuconp
     get '/' do
       me = get_session_user()
 
-      results = db.query('SELECT `posts`.`id`, `user_id`, `body`, `posts`.`created_at`, `mime` FROM `posts` del_flg = 0 ORDER BY `posts`.`created_at` DESC LIMIT 20')
+      results = db.query('SELECT `posts`.`id`, `user_id`, `body`, `posts`.`created_at`, `mime` FROM `posts` WHERE del_flg = 0 ORDER BY `posts`.`created_at` DESC LIMIT 20')
       posts = make_posts(results)
 
       erb :index, layout: :layout, locals: { posts: posts, me: me }
