@@ -60,6 +60,10 @@ module Isuconp
           key = user_post_ids_key(post[:user_id])
           redis.rpush(key, post[:id])
         end
+
+        db.prepare('select * from users').execute.each do |user|
+          redis.set(user_key(user[:id]), Marshal.dump(user))
+        end
       end
 
       def post_comment_counter_key(id)
@@ -72,6 +76,15 @@ module Isuconp
 
       def user_post_ids_key(id)
         "users#{id}:posts:ids"
+      end
+
+      def user_key(id)
+        "user#{id}"
+      end
+
+      def find_user(id)
+        @@user_list ||= {}
+        @@user_list[id] || @@user_list[id] = Marshal.load(redis.get(user_key(id)))
       end
 
       def try_login(account_name, password)
@@ -121,8 +134,6 @@ module Isuconp
         posts = []
         post_ids = results.map { |post| post[:id] }
         comment_store = db.prepare("SELECT post_id, user_id, comment FROM comments WHERE post_id in (#{post_ids.join(',')})").execute.to_a
-        user_ids = (results.map { |post| post[:user_id] } + comment_store.map { |c| c[:user_id] }).uniq
-        user_store = db.prepare("SELECT id, account_name, del_flg FROM users WHERE id IN (#{user_ids.join(',')})").execute.to_a
         comment_counts = redis.mget(*post_ids.map {|pid| post_comment_counter_key(pid)}).map(&:to_i)
 
         results.to_a.each do |post|
@@ -135,10 +146,10 @@ module Isuconp
           end
 
           comments.each do |comment|
-            comment[:user] = user_store.find { |u| u[:id] == comment[:user_id] }
+            comment[:user] = find_user(comment[:user_id])
           end
           post[:comments] = comments.reverse
-          post[:user] = user_store.find { |u| u[:id] == post[:user_id] }
+          post[:user] = find_user(post[:user_id])
           post[:user][:escaped_account_name] = escape_html(CGI.escape(post[:user][:account_name]))
 
           posts.push(post)
