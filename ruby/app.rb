@@ -268,7 +268,7 @@ module Isuconp
     get '/' do
       me = get_session_user()
 
-      results = db.query('SELECT `posts`.`id`, `user_id`, `body`, `posts`.`created_at`, `mime` FROM `posts` INNER JOIN users on `posts`.`user_id` = `users`.id where del_flg = 0 ORDER BY `posts`.`created_at` DESC LIMIT 20')
+      results = db.query('SELECT `posts`.`id`, `user_id`, `body`, `posts`.`created_at`, `mime` FROM `posts` INNER JOIN users on `posts`.`user_id` = `users`.id where del_flg = 0 ORDER BY `posts`.`id` DESC LIMIT 20')
       posts = make_posts(results)
 
       erb :index, layout: :layout, locals: { posts: posts, me: me }
@@ -283,7 +283,7 @@ module Isuconp
         return 404
       end
 
-      results = db.prepare('SELECT `id`, `user_id`, `body`, `mime`, `created_at` FROM `posts` WHERE `user_id` = ? ORDER BY `created_at` DESC LIMIT 20').execute(
+      results = db.prepare('SELECT `id`, `user_id`, `body`, `mime`, `created_at` FROM `posts` WHERE `user_id` = ? ORDER BY `id` DESC LIMIT 20').execute(
         user[:id]
       )
       posts = make_posts(results)
@@ -307,7 +307,7 @@ module Isuconp
 
     get '/posts' do
       max_created_at = params['max_created_at']
-      results = db.prepare('SELECT `posts`.`id`, `user_id`, `body`, `mime`, `posts`.`created_at` FROM `posts` INNER JOIN users ON `posts`.`user_id` = `users`.id WHERE `posts`.`created_at` <= ? AND del_flg = 0 ORDER BY `created_at` DESC LIMIT 20').execute(
+      results = db.prepare('SELECT `posts`.`id`, `user_id`, `body`, `mime`, `posts`.`created_at` FROM `posts` INNER JOIN users ON `posts`.`user_id` = `users`.id WHERE `posts`.`created_at` <= ? AND del_flg = 0 ORDER BY `id` DESC LIMIT 20').execute(
         max_created_at.nil? ? nil : Time.iso8601(max_created_at).localtime
       )
       posts = make_posts(results)
@@ -425,7 +425,7 @@ module Isuconp
         return 403
       end
 
-      users = db.query('SELECT * FROM `users` WHERE `authority` = 0 AND `del_flg` = 0 ORDER BY `created_at` DESC')
+      users = db.query('SELECT * FROM `users` WHERE `authority` = 0 AND `del_flg` = 0 ORDER BY `id` DESC')
 
       erb :banned, layout: :layout, locals: { users: users, me: me }
     end
