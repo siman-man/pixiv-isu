@@ -163,7 +163,7 @@ module Isuconp
           post[:user] = find_user(post[:user_id])
           post[:user][:escaped_account_name] = escape_html(CGI.escape(post[:user][:account_name]))
 
-          posts.push(post)
+          post
         end
       end
 
