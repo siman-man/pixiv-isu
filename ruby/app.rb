@@ -139,15 +139,14 @@ module Isuconp
       end
 
       def make_posts(results, all_comments: false)
-        posts = []
         post_ids = results.map { |post| post[:id] }
         comment_store = Hash.new { |h, k| h[k] = [] }
-        db.prepare("SELECT post_id, user_id, comment FROM comments WHERE post_id in (#{post_ids.join(',')})").execute.each do |comment|
+        db.prepare("SELECT user_id, comment FROM comments WHERE post_id in (#{post_ids.join(',')})").execute.each do |comment|
           comment_store[comment[:post_id]] << comment
         end
         comment_counts = redis.mget(*post_ids.map {|pid| post_comment_counter_key(pid)}).map(&:to_i)
 
-        post_ids.each do |pid|
+        post_ids.map do |pid|
           post = find_post(pid)
           post[:comment_count] = comment_counts.shift
 
@@ -166,8 +165,6 @@ module Isuconp
 
           posts.push(post)
         end
-
-        posts
       end
 
       def image_url(id, mime)
