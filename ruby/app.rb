@@ -99,7 +99,14 @@ module Isuconp
 
       def find_user_by_name(account_name)
         @@user_list_by_name ||= {}
-        @@user_list_by_name[account_name] || @@user_list_by_name[account_name] = Marshal.load(redis.get(user_key_by_name(account_name)))
+        return @@user_list_by_name[account_name] if @@user_list_by_name[account_name]
+
+        user = redis.get(user_key_by_name(account_name))
+        if user.nil?
+          nil
+        else
+          @@user_list_by_name[account_name] = Marshal.load(redis.get(user_key_by_name(account_name)))
+        end
       end
 
       def find_post(id)
