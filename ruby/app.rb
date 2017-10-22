@@ -368,12 +368,11 @@ module Isuconp
           params["body"],
         )
         pid = db.last_id
-        db.query("UNLOCK TABLES")
-
         img_path = File.expand_path("../public" + image_url(pid, mime))
         File.write(img_path, params["file"][:tempfile].read)
         post = db.prepare('SELECT * FROM posts where id = ?').execute(pid).first
         redis.set(post_key(post[:id]), Marshal.dump(post))
+        db.query("UNLOCK TABLES")
 
         redirect "/posts/#{pid}", 302
       else
