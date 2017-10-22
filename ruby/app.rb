@@ -122,9 +122,7 @@ module Isuconp
 
       def get_session_user()
         if session[:user]
-          db.prepare('SELECT id, account_name, authority FROM `users` WHERE `id` = ?').execute(
-            session[:user][:id]
-          ).first
+          find_user(session[:user][:id])
         else
           nil
         end
@@ -242,6 +240,8 @@ module Isuconp
         account_name,
         calculate_passhash(account_name, password)
       )
+      user = db.prepare('SELECT * FROM users WHERE `account_name` = ?').execute(account_name).first
+      redis.set(user_key(user[:id]), Marshal.dump(user))
 
       session[:user] = {
         id: db.last_id
