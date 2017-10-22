@@ -447,6 +447,8 @@ module Isuconp
       end
 
       query = 'UPDATE `users` SET `del_flg` = ? WHERE `id` = ?'
+      user = find_user(params['uid'])
+      user[:del_flg] = 1
 
       params['uid'].each do |id|
         db.prepare(query).execute(1, id.to_i)
