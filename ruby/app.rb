@@ -64,6 +64,7 @@ module Isuconp
 
         db.prepare('select * from users').execute.each do |user|
           redis.set(user_key(user[:id]), Marshal.dump(user))
+          redis.set(user_key_by_name(user[:account_name]), Marshal.dump(user))
         end
       end
 
@@ -80,7 +81,11 @@ module Isuconp
       end
 
       def user_key(id)
-        "user#{id}"
+        "user:#{id}"
+      end
+
+      def user_key_by_name(account_name)
+        "user:#{account_name}"
       end
 
       def post_key(id)
@@ -92,15 +97,20 @@ module Isuconp
         @@user_list[id] || @@user_list[id] = Marshal.load(redis.get(user_key(id)))
       end
 
+      def find_user_by_name(account_name)
+        @@user_list_by_name ||= {}
+        @@user_list_by_name[account_name] || @@user_list_by_name[account_name] = Marshal.load(redis.get(user_key_by_name(account_name)))
+      end
+
       def find_post(id)
         @@post_list ||= {}
         @@post_list[id] || @@post_list[id] = Marshal.load(redis.get(post_key(id)))
       end
 
       def try_login(account_name, password)
-        user = db.prepare('SELECT id, account_name, passhash FROM users WHERE account_name = ? AND del_flg = 0').execute(account_name).first
+        user = find_user_by_name(account_name)
 
-        if user && calculate_passhash(user[:account_name], password) == user[:passhash]
+        if user && user[:del_flg] == 0 && calculate_passhash(user[:account_name], password) == user[:passhash]
           return user
         elsif user
           return nil
@@ -250,6 +260,7 @@ module Isuconp
       )
       user = db.prepare('SELECT * FROM users WHERE `account_name` = ?').execute(account_name).first
       redis.set(user_key(user[:id]), Marshal.dump(user))
+      redis.set(user_key_by_name(user[:account_name]), Marshal.dump(user))
 
       session[:user] = {
         id: db.last_id
@@ -273,9 +284,7 @@ module Isuconp
     end
 
     get '/@:account_name' do
-      user = db.prepare('SELECT id, account_name FROM `users` WHERE `account_name` = ? AND `del_flg` = 0').execute(
-        params[:account_name]
-      ).first
+      user = find_user_by_name(params[:account_name])
 
       if user.nil?
         return 404
