@@ -317,7 +317,7 @@ module Isuconp
     end
 
     get '/posts/:id' do
-      results = [params[:id]]
+      results = [{ id: params[:id].to_i }]
       posts = make_posts(results, all_comments: true)
 
       return 404 if posts.length == 0
