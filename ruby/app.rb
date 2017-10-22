@@ -148,6 +148,7 @@ module Isuconp
         comment_counts = redis.mget(*post_ids.map {|pid| post_comment_counter_key(pid)}).map(&:to_i)
 
         results.to_a.each do |post|
+          post = find_post(post[:id])
           post[:comment_count] = comment_counts.shift
 
           if all_comments
@@ -268,7 +269,7 @@ module Isuconp
     get '/' do
       me = get_session_user()
 
-      results = db.query('SELECT `posts`.`id`, `user_id`, `body`, `posts`.`created_at`, `mime` FROM `posts` INNER JOIN users on `posts`.`user_id` = `users`.id where del_flg = 0 ORDER BY `posts`.`id` DESC LIMIT 20')
+      results = db.query('SELECT `posts`.`id`, `user_id` FROM `posts` INNER JOIN users on `posts`.`user_id` = `users`.id where del_flg = 0 ORDER BY `posts`.`id` DESC LIMIT 20')
       posts = make_posts(results)
 
       erb :index, layout: :layout, locals: { posts: posts, me: me }
