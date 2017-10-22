@@ -56,9 +56,10 @@ module Isuconp
           redis.set(key, result[:comment_count])
         end
 
-        db.prepare('select id, user_id from posts').execute.each do |post|
+        db.prepare('select * from posts').execute.each do |post|
           key = user_post_ids_key(post[:user_id])
           redis.rpush(key, post[:id])
+          redis.set(post_key(post[:id]), Marshal.dump(post))
         end
 
         db.prepare('select * from users').execute.each do |user|
@@ -82,9 +83,18 @@ module Isuconp
         "user#{id}"
       end
 
+      def post_key(id)
+        "post#{id}"
+      end
+
       def find_user(id)
         @@user_list ||= {}
         @@user_list[id] || @@user_list[id] = Marshal.load(redis.get(user_key(id)))
+      end
+
+      def find_post(id)
+        @@post_list ||= {}
+        @@post_list[id] || @@post_list[id] = Marshal.load(redis.get(post_key(id)))
       end
 
       def try_login(account_name, password)
@@ -306,9 +316,7 @@ module Isuconp
     end
 
     get '/posts/:id' do
-      results = db.prepare('SELECT * FROM `posts` WHERE `id` = ? LIMIT 20').execute(
-        params[:id]
-      )
+      results = find_post(params[:id])
       posts = make_posts(results, all_comments: true)
 
       return 404 if posts.length == 0
@@ -363,6 +371,8 @@ module Isuconp
 
         img_path = File.expand_path("../public" + image_url(pid, mime))
         File.write(img_path, params["file"][:tempfile].read)
+        post = db.prepare('SELECT * FROM posts where id = ?').execute(pid).first
+        redis.set(post_key(post[:id]), Marshal.dump(post))
 
         redirect "/posts/#{pid}", 302
       else
